@@ -7,7 +7,46 @@ import (
 	"strconv"
 )
 
-// mean square error function
+// Implement the apply function for tensors to apply func to it 
+type ElemFunc func(float64) (float64, error)
+
+var funcRegistry = make(map[string]ElemFunc)
+
+func RegisterFunc(name string, fn ElemFunc) error {
+	if _, exists := funcRegistry[name]; exists {
+		return fmt.Errorf("func Name %s already registered", name)
+	}
+	funcRegistry[name] = fn
+	return nil
+}
+
+// Put all the functions that can apply to tensors in this else call explicitly in the main func
+func init() {
+	RegisterFunc("Sigmoid", Sigmoid)
+	RegisterFunc("ReLu", ReLu)
+	RegisterFunc("DiffSigmoid", DiffSigmoid)
+}
+
+// Apply func that applies a float to float function on a tensor
+func (t *Tensor) Apply(name string) (*Tensor, error) {
+	fn, exists := funcRegistry[name]
+	if !exists {
+		return nil, fmt.Errorf("apply: The function name %s is not registerd", name)
+	}
+	result, err := NewTensor(t.shape...)
+	if err != nil {
+		return nil, err
+	}
+	for i, val := range t.data {
+		result.data[i], err = fn(val)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// Mean square error function
 func MSE(a *Tensor, b *Tensor) (float64, error) {
 	if !ShapesMatch(a.shape, b.shape) {
 		return 0, fmt.Errorf("mse: The shapes of the tensors do not match %v, %v", a.shape, b.shape)
@@ -45,6 +84,36 @@ func DiffMSE(a *Tensor, b *Tensor) (*Tensor, error) {
 	}
 	return result, nil 
 }
+
+// Sigmoid funtion 
+func Sigmoid(a float64) (float64, error) {
+	e, err := Exp(a)
+	if err != nil {
+		return 0, err
+	}
+	result := 1.0/(1.0 + e)
+	return result, nil
+}
+
+func DiffSigmoid(a float64) (float64, error) {
+	sigx, err := Sigmoid(a)
+	if err != nil {
+		return 0, err
+	}
+	return sigx * (1.0 - sigx), nil 
+}
+
+// relu function
+func ReLu(a float64) (float64, error) {
+	if a < 0 {return 0, nil}
+	return a, nil
+}
+
+func DiffReLu(a float64) (float64, error) {
+	if a < 0 {return 0, nil}
+	return 1.0, nil 
+}
+
 
 // Function to read the csv file returns like pandas df
 func ReadCsv(path string) (map[string][]float64, error) {

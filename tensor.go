@@ -387,3 +387,4 @@ func (t *Tensor) Unsqeeze(pos int) (*Tensor, error) {
 	}
 	return result, nil
 }
+

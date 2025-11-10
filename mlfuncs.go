@@ -8,7 +8,7 @@ import (
 )
 
 // Implement the apply function for tensors to apply func to it 
-type ElemFunc func(float64) (float64, error)
+type ElemFunc func(float64) (float64)
 
 var funcRegistry = make(map[string]ElemFunc)
 
@@ -38,10 +38,7 @@ func (t *Tensor) Apply(name string) (*Tensor, error) {
 		return nil, err
 	}
 	for i, val := range t.data {
-		result.data[i], err = fn(val)
-		if err != nil {
-			return nil, err
-		}
+		result.data[i] = fn(val)
 	}
 	return result, nil
 }
@@ -86,32 +83,26 @@ func DiffMSE(a *Tensor, b *Tensor) (*Tensor, error) {
 }
 
 // Sigmoid funtion 
-func Sigmoid(a float64) (float64, error) {
-	e, err := Exp(a)
-	if err != nil {
-		return 0, err
-	}
+func Sigmoid(a float64) float64 {
+	e := Exp(a)
 	result := 1.0/(1.0 + e)
-	return result, nil
+	return result
 }
 
-func DiffSigmoid(a float64) (float64, error) {
-	sigx, err := Sigmoid(a)
-	if err != nil {
-		return 0, err
-	}
-	return sigx * (1.0 - sigx), nil 
+func DiffSigmoid(a float64) (float64) {
+	sigx := Sigmoid(a)
+	return sigx * (1.0 - sigx)
 }
 
 // relu function
-func ReLu(a float64) (float64, error) {
-	if a < 0 {return 0, nil}
-	return a, nil
+func ReLu(a float64) (float64) {
+	if a < 0 {return 0}
+	return a
 }
 
-func DiffReLu(a float64) (float64, error) {
-	if a < 0 {return 0, nil}
-	return 1.0, nil 
+func DiffReLu(a float64) (float64) {
+	if a < 0 {return 0}
+	return 1.0 
 }
 
 

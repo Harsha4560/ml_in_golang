@@ -117,20 +117,67 @@ func Abs(x float64) float64 {
 }
 
 // this is using the taylor serires expansion 
-func Exp(x float64) (float64, error) {
+func Exp(x float64) float64 {
 	result := 1.0
 	epsilon := 1e-15
 	for n:=1; ; n++ {
 		pow, err := Power(x, float64(n))
 		if err != nil {
-			return 0, err
+			return 0
 		}
 		newResult := result + (pow/Factorial(n))
 		if Abs(result - newResult) <= epsilon {
-			return newResult, nil 
+			return newResult
 		}
 		result = newResult
 	}
 }
 
+const pi = 3.141592653589793
 
+// converts radians to degrees
+func Degrees(x float64) (float64) {
+	return (x * 180.0)/pi
+}
+
+// converts degrees to radians
+func Radians(x float64) (float64) {
+	return (x * pi)/180.0
+}
+
+// Calculate the sine function using the Taylor series 
+// Takes input in radians
+func Sin(x float64) float64 {
+	for x >= 2*pi {
+		x -= 2*pi
+	}
+	epsilon := 1e-15
+	result := 0.0
+	flag := 1.0
+	for n:=1; ; n+=2 {
+		pow, _ := Power(x, float64(n))
+		newResult := result + flag * (pow/Factorial(n))
+		if Abs(result - newResult) <= epsilon {
+			return newResult
+		}
+		result = newResult
+		flag *= -1
+	}
+}
+
+func Cos(x float64) (float64) {
+	for x >= 2*pi {
+		x -= 2*pi
+	}
+	epsilon := 1e-15
+	result := 0.0 
+	for n:=0; ; n++ {
+		pow, _ := Power(x, float64(2*n))
+		flag, _ := Power(-1, float64(n))
+		newResult := result + flag * (pow/Factorial(2*n))
+		if Abs(result - newResult) <= epsilon {
+			return newResult
+		}
+		result = newResult
+	}
+}

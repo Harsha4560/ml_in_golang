@@ -82,6 +82,25 @@ func DiffMSE(a *Tensor, b *Tensor) (*Tensor, error) {
 	return result, nil 
 }
 
+// The binary cross entropy function 
+func BCE(a *Tensor, b *Tensor) (float64, error) {
+	if !ShapesMatch(a.shape, b.shape) {
+		return 0, fmt.Errorf("bce: The shape of the input tensors do not match")
+	}
+
+	result := 0.0 
+	for i := range(a.data) {
+		if a.data[i] > 1 || b.data[i] > 1 {
+			return 0, fmt.Errorf("bce: The value in either tensor is more than 1")
+		}
+		result += a.data[i] * Ln(b.data[i]) + (1 - a.data[i]) * Ln(1 - b.data[i])
+	}
+	result = result/float64(len(a.data))
+	return result, nil
+}
+
+
+
 // Sigmoid funtion 
 func Sigmoid(a float64) float64 {
 	e := Exp(a)

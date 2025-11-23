@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -181,3 +182,31 @@ func Cos(x float64) (float64) {
 		result = newResult
 	}
 }
+
+// Using newton raphson method
+func Ln(x float64) float64 {
+	if x <= 0 {
+		return math.NaN()
+	}
+
+	if x == 1 {
+		return 0.0
+	}
+
+	guess := 1.0
+	epsilon := 1e-15
+
+	for i:=0; ; i++ {
+		newGuess := guess - 1 + (x/Exp(guess))
+		if Abs(newGuess - guess) <= epsilon {
+			return newGuess
+		}
+		guess = newGuess
+	}
+
+}
+
+func Log(x float64, base float64) float64 {
+	return Ln(x)/Ln(base)
+}
+

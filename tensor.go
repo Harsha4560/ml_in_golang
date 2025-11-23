@@ -39,6 +39,17 @@ func NewTensor(shape ...int) (*Tensor, error) {
 	}, nil
 }
 
+func NewTensorOnes(shape ...int) (*Tensor, error) {
+	t, err := NewTensor(shape...)
+	if err != nil {
+		return nil, err
+	}
+	for i := range(t.data) {
+		t.data[i] = 1.0
+	}
+	return t, nil
+}
+
 func (t *Tensor) getIndex(coords ...int) (int, error) {
 	if len(coords) != len(t.shape) {
 		return 0, fmt.Errorf("getIndex error: invalid coordinates for the get function")

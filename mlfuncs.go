@@ -95,11 +95,25 @@ func BCE(a *Tensor, b *Tensor) (float64, error) {
 		}
 		result += a.data[i] * Ln(b.data[i]) + (1 - a.data[i]) * Ln(1 - b.data[i])
 	}
-	result = result/float64(len(a.data))
+	result = -1.0 * result/float64(len(a.data))
 	return result, nil
 }
 
-
+func DiffBCE(a *Tensor, b *Tensor) (*Tensor, error) {
+	result, err := NewTensor(a.shape...)
+	if err != nil {
+		return nil, err
+	}
+	for i := range(a.data) {
+		if a.data[i] > 1 || b.data[i] > 1 {
+			return nil, fmt.Errorf("diffBCE: The value in either tensor is more than one")
+		}
+		y := a.data[i]
+		y_pred := b.data[i]
+		result.data[i] = (y_pred - y)/(y_pred * (1 - y_pred))
+	}
+	return nil, nil 
+}
 
 // Sigmoid funtion 
 func Sigmoid(a float64) float64 {

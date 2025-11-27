@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"time"
+	// "time"
 )
 
 // LINEARR REGRESSION
@@ -13,7 +13,6 @@ type LinearRegression struct {
 }
 
 func NewLinearRegression(numFeatures int) *LinearRegression {
-	rand.Seed(time.Now().UnixMicro())
 	weights, _ := NewTensor(numFeatures)
 	for i := range weights.data {
 		weights.data[i] = rand.NormFloat64() * 0.01
@@ -32,7 +31,8 @@ func (lr *LinearRegression) Predict(X *Tensor) (*Tensor, error) {
 		return nil, fmt.Errorf("predict: The input is not the same shape as features %v, %v", X.shape, lr.Weights.shape)
 	}
 	a, _ := TensorMul(X, lr.Weights)
-	b, _ := a.AddScalar(lr.Bias)
+	b, _ := a.Sum()
+	b, _ = b.AddScalar(lr.Bias)
 	return b, nil
 }
 
@@ -96,6 +96,37 @@ func (l *LinearRegression) Train(X *Tensor, Y *Tensor, lr float64, epochs int) e
 	return nil
 }
 
+
+// Logistic Regression 
+type LogisticRegression struct {
+	Weights *Tensor
+	Bias float64
+}
+
+func NewLogisticRegression(numFeatures int) *LogisticRegression {
+	weights, _ := NewTensor(numFeatures)
+	for i := range(weights.data) {
+		weights.data[i] = rand.NormFloat64() * 0.01
+	}
+	return &LogisticRegression{
+		Weights: weights, 
+		Bias: rand.NormFloat64() * 0.01,
+	}
+}
+
+func (lr *LogisticRegression) Predict(X *Tensor) (*Tensor, error) {
+	if len(X.shape) != 1 {
+		return nil, fmt.Errorf("predict: Input shape is not 1d")
+	}
+	if X.shape[0] != lr.Weights.shape[0] {
+		return nil, fmt.Errorf("predict: Input shape does not match the number of features")
+	}
+	a, _ := TensorMul(X, lr.Weights)
+	b, _ := a.Sum()
+	b, _ = b.AddScalar(lr.Bias)
+	b, _ = b.Apply("Sigmoid")
+	return b, nil
+}
 
 
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 )
 
 type Tensor struct {
@@ -9,6 +10,54 @@ type Tensor struct {
 	data    []float64
 	strides []int
 	size    int
+}
+
+func NewTensorInput(input any) (*Tensor, error) {
+	val := reflect.ValueOf(input)
+	if val.Kind() != reflect.Slice && val.Kind() != reflect.Array {
+		return nil, fmt.Errorf("newTensorInput: expected slice or array got %v", val.Kind())
+	}
+	var shape []int
+
+	current := val
+	for current.Kind() == reflect.Slice || current.Kind() == reflect.Array {
+		len := current.Len()
+		shape = append(shape, len)
+		if len > 0 {
+			current = current.Index(0)
+		} else {
+			break
+		}
+	}
+	
+	result, err := NewTensor(shape...)
+	if err != nil {
+		return nil, err
+	}
+
+
+	for i := range(result.data) {
+		coords := make([]int, len(shape))
+		tempi := i
+		for j:=len(coords)-1; j>= 0; j-- {
+			coords[j] = tempi/result.strides[j]
+			tempi = tempi % result.strides[j]
+		}
+		current := val
+		for _, coord := range(coords) {
+			current = current.Index(coord)
+		}
+		// safe conversion thanks gemini
+		switch current.Kind() {
+		case reflect.Float32, reflect.Float64: 
+			result.data[i] = current.Float()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			result.data[i] = float64(current.Int())
+		default: 
+			return nil, fmt.Errorf("newTensorInput: Unsupported element at %v: %v", coords, current.Kind())
+		}
+	}
+	return result, nil
 }
 
 func NewTensor(shape ...int) (*Tensor, error) {
@@ -91,6 +140,14 @@ func (t *Tensor) SetTensor(val *Tensor, coords ...int) error {
 		t.data[i+start] = val.data[i]
 	}
 	return nil
+}
+
+func (t *Tensor) Sum() (*Tensor, error) {
+	result, _ := NewTensor(1)
+	for i := range(t.data) {
+		result.data[0] += t.data[i]
+	}
+	return result, nil
 }
 
 func (t *Tensor) Get(coords ...int) (float64, error) {

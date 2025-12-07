@@ -16,6 +16,13 @@ func Power(base float64, pow float64) (float64, error) {
 	return result, nil
 }
 
+func Round(a float64) float64 {
+	if a-float64(int(a)) >= 0.5 {
+		return float64(int(a)) + 1
+	}
+	return float64(int(a))
+}
+
 func powerInt(x float64, y int64) float64 {
 	if y == 0 {
 		return 1.0
@@ -76,7 +83,7 @@ func Fraction(f float64) (num, den int64, err error) {
 }
 
 func convertFrac(f float64) (num, den int64, err error) {
-	s := fmt.Sprintf("%.12f", f)
+	s := fmt.Sprintf("%.5f", f)
 	s = strings.TrimPrefix(s, "0.")
 
 	var denominator int64 = 1
@@ -105,60 +112,50 @@ func Factorial(n int) float64 {
 		return 1
 	}
 	result := 1.0
-	for i:=1; i<=n; i++ {
+	for i := 1; i <= n; i++ {
 		result *= float64(i)
 	}
 	return result
 }
 
-// Absolute value function 
+// Absolute value function
 func Abs(x float64) float64 {
-	if x >= 0 {return x}
+	if x >= 0 {
+		return x
+	}
 	return -x
 }
 
-// this is using the taylor serires expansion 
+// this is using the taylor serires expansion
 func Exp(x float64) float64 {
-	result := 1.0
-	epsilon := 1e-15
-	for n:=1; ; n++ {
-		pow, err := Power(x, float64(n))
-		if err != nil {
-			return 0
-		}
-		newResult := result + (pow/Factorial(n))
-		if Abs(result - newResult) <= epsilon {
-			return newResult
-		}
-		result = newResult
-	}
+	return math.Exp(x)
 }
 
 const pi = 3.141592653589793
 
 // converts radians to degrees
-func Degrees(x float64) (float64) {
-	return (x * 180.0)/pi
+func Degrees(x float64) float64 {
+	return (x * 180.0) / pi
 }
 
 // converts degrees to radians
-func Radians(x float64) (float64) {
-	return (x * pi)/180.0
+func Radians(x float64) float64 {
+	return (x * pi) / 180.0
 }
 
-// Calculate the sine function using the Taylor series 
+// Calculate the sine function using the Taylor series
 // Takes input in radians
 func Sin(x float64) float64 {
 	for x >= 2*pi {
-		x -= 2*pi
+		x -= 2 * pi
 	}
 	epsilon := 1e-15
 	result := 0.0
 	flag := 1.0
-	for n:=1; ; n+=2 {
+	for n := 1; ; n += 2 {
 		pow, _ := Power(x, float64(n))
-		newResult := result + flag * (pow/Factorial(n))
-		if Abs(result - newResult) <= epsilon {
+		newResult := result + flag*(pow/Factorial(n))
+		if Abs(result-newResult) <= epsilon {
 			return newResult
 		}
 		result = newResult
@@ -166,17 +163,17 @@ func Sin(x float64) float64 {
 	}
 }
 
-func Cos(x float64) (float64) {
+func Cos(x float64) float64 {
 	for x >= 2*pi {
-		x -= 2*pi
+		x -= 2 * pi
 	}
 	epsilon := 1e-15
-	result := 0.0 
-	for n:=0; ; n++ {
+	result := 0.0
+	for n := 0; ; n++ {
 		pow, _ := Power(x, float64(2*n))
 		flag, _ := Power(-1, float64(n))
-		newResult := result + flag * (pow/Factorial(2*n))
-		if Abs(result - newResult) <= epsilon {
+		newResult := result + flag*(pow/Factorial(2*n))
+		if Abs(result-newResult) <= epsilon {
 			return newResult
 		}
 		result = newResult
@@ -185,6 +182,9 @@ func Cos(x float64) (float64) {
 
 // Using newton raphson method
 func Ln(x float64) float64 {
+	if math.IsNaN(x) {
+		return x
+	}
 	if x <= 0 {
 		return math.NaN()
 	}
@@ -196,17 +196,17 @@ func Ln(x float64) float64 {
 	guess := 1.0
 	epsilon := 1e-15
 
-	for i:=0; ; i++ {
-		newGuess := guess - 1 + (x/Exp(guess))
-		if Abs(newGuess - guess) <= epsilon {
+	for i := 0; i < 2000; i++ {
+		newGuess := guess - 1 + (x / Exp(guess))
+		if Abs(newGuess-guess) <= epsilon {
 			return newGuess
 		}
 		guess = newGuess
 	}
+	return guess
 
 }
 
 func Log(x float64, base float64) float64 {
-	return Ln(x)/Ln(base)
+	return Ln(x) / Ln(base)
 }
-

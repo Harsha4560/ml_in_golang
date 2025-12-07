@@ -12,6 +12,7 @@ type Tensor struct {
 	size    int
 }
 
+// Takes a multidimentional array and converts it to a tensor
 func NewTensorInput(input any) (*Tensor, error) {
 	val := reflect.ValueOf(input)
 	if val.Kind() != reflect.Slice && val.Kind() != reflect.Array {
@@ -39,7 +40,7 @@ func NewTensorInput(input any) (*Tensor, error) {
 	for i := range(result.data) {
 		coords := make([]int, len(shape))
 		tempi := i
-		for j:=len(coords)-1; j>= 0; j-- {
+		for j := range(coords) {
 			coords[j] = tempi/result.strides[j]
 			tempi = tempi % result.strides[j]
 		}
@@ -60,6 +61,7 @@ func NewTensorInput(input any) (*Tensor, error) {
 	return result, nil
 }
 
+// Creates new tensor of the shape with 0 for all the values
 func NewTensor(shape ...int) (*Tensor, error) {
 	if len(shape) == 0 {
 		return nil, fmt.Errorf("newtensor error: shape of Tensor cannot be empty")
@@ -88,6 +90,7 @@ func NewTensor(shape ...int) (*Tensor, error) {
 	}, nil
 }
 
+// Creates new tensor of the shape with 1 for all the vales
 func NewTensorOnes(shape ...int) (*Tensor, error) {
 	t, err := NewTensor(shape...)
 	if err != nil {
@@ -99,6 +102,7 @@ func NewTensorOnes(shape ...int) (*Tensor, error) {
 	return t, nil
 }
 
+// gets the 1d index in the data from the n'd coordinates given
 func (t *Tensor) getIndex(coords ...int) (int, error) {
 	if len(coords) != len(t.shape) {
 		return 0, fmt.Errorf("getIndex error: invalid coordinates for the get function")
@@ -114,6 +118,7 @@ func (t *Tensor) getIndex(coords ...int) (int, error) {
 	return index, nil
 }
 
+// Set the value of a given coordinates
 func (t *Tensor) Set(value float64, coords ...int) error {
 	index, err := t.getIndex(coords...)
 	if err != nil {
@@ -123,6 +128,7 @@ func (t *Tensor) Set(value float64, coords ...int) error {
 	return nil
 }
 
+// Sets the sub tensor at the given coords
 func (t *Tensor) SetTensor(val *Tensor, coords ...int) error {
 	if len(coords) >= len(t.shape) {
 		return fmt.Errorf("setTensor: the given tensor has the wrong shape for assigning tensors %v", t.shape)
@@ -142,6 +148,7 @@ func (t *Tensor) SetTensor(val *Tensor, coords ...int) error {
 	return nil
 }
 
+// Gives sum of all the values in the tensor
 func (t *Tensor) Sum() (*Tensor, error) {
 	result, _ := NewTensor(1)
 	for i := range(t.data) {
@@ -150,6 +157,7 @@ func (t *Tensor) Sum() (*Tensor, error) {
 	return result, nil
 }
 
+// Get the value at the given coords in the tensor
 func (t *Tensor) Get(coords ...int) (float64, error) {
 	index, err := t.getIndex(coords...)
 	if err != nil {
@@ -158,6 +166,7 @@ func (t *Tensor) Get(coords ...int) (float64, error) {
 	return t.data[index], nil
 }
 
+// Give the sub tensor at the given coords
 func (t *Tensor) Slice(coords ...int) (*Tensor, error) {
 	if len(coords) == 0 {
 		return nil, fmt.Errorf("slice error: slice must have atleast one coords")
@@ -204,6 +213,7 @@ func (t *Tensor) Slice(coords ...int) (*Tensor, error) {
 	}, nil
 }
 
+// Check if the shapes of the given tensors match
 func ShapesMatch(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
@@ -216,7 +226,7 @@ func ShapesMatch(a, b []int) bool {
 	return true
 }
 
-// Add scalar to a tensor
+// Add scalar to all the values in the tensor
 func (t *Tensor) AddScalar(other float64) (*Tensor, error) {
 	result, err := NewTensor(t.shape...)
 	if err != nil {
@@ -228,6 +238,7 @@ func (t *Tensor) AddScalar(other float64) (*Tensor, error) {
 	return result, nil
 }
 
+// Multiply all the values with the given value in the tensor
 func (t *Tensor) MulScalar(other float64) (*Tensor, error) {
 	result, err := NewTensor(t.shape...)
 	if err != nil {
@@ -253,7 +264,7 @@ func TensorAdd(a *Tensor, b *Tensor) (*Tensor, error) {
 
 func TensorDiff(a *Tensor, b *Tensor) (*Tensor, error) {
 	if !ShapesMatch(a.shape, b.shape) {
-		return nil, fmt.Errorf("difference: tensor shapes do not match %v, %v", a.shape, b.shape)
+		return nil, fmt.Errorf("tensorDiff: tensor shapes do not match %v, %v", a.shape, b.shape)
 	}
 	result, _ := NewTensor(a.shape...)
 	for i:=0; i<a.size; i++ {
@@ -265,7 +276,7 @@ func TensorDiff(a *Tensor, b *Tensor) (*Tensor, error) {
 // Element wise multiplication of tensors of the same shape
 func  TensorMul(a *Tensor, b *Tensor) (*Tensor, error) {
 	if !ShapesMatch(a.shape, b.shape) {
-		return nil, fmt.Errorf("tensor shapes do not match %v and %v", a.shape, b.shape)
+		return nil, fmt.Errorf("tensorMul: tensor shapes do not match %v and %v", a.shape, b.shape)
 	}
 	result, _ := NewTensor(a.shape...)
 	for i := 0; i < a.size; i++ {
@@ -274,6 +285,50 @@ func  TensorMul(a *Tensor, b *Tensor) (*Tensor, error) {
 	return result, nil
 }
 
+// Combines two tensors [a, b, c] + [a, b, c] -> [2, a, b, c]
+// or can combine [a, b, c, d] + [b, c, d] -> [a+1, b, c, d]
+func TensorCombine(a *Tensor, b *Tensor) (*Tensor, error) {
+	if !ShapesMatch(a.shape, b.shape) && !ShapesMatch(a.shape[1:], b.shape) {
+		return nil, fmt.Errorf("tensorCombine: shape mismatch between %v and %v. Tensors must either have identical shapes or the first tensor must be one rank higher (a stacking of the second)", a.shape, b.shape)
+	}
+	// When both tensors have the same shape
+	if ShapesMatch(a.shape, b.shape) {
+		newshape := append([]int{2}, a.shape...)
+		result, err := NewTensor(newshape...)
+		if err != nil {
+			return nil, err
+		}
+		for i := range(result.data) {
+			if i > len(a.data)-1 {
+				result.data[i] = b.data[i-len(a.data)]
+			} else {
+				result.data[i] = a.data[i]
+			}
+		}
+		return result, nil
+	}
+
+	// When tensor b is one rank lower than a 
+	if ShapesMatch(a.shape[1:], b.shape) {
+		newshape := a.shape
+		newshape[0] += 1
+		result, err := NewTensor(newshape...)
+		if err != nil {
+			return nil, err
+		}
+		for i := range(result.data) {
+			if i > len(a.data) - 1 {
+				result.data[i] = b.data[i-len(a.data)]
+			} else {
+				result.data[i] = a.data[i]
+			}
+		}
+		return result, nil 
+	}
+	return nil, fmt.Errorf("for some reason there is an error Good luck finding why")
+}
+
+// Shows a given tensor in the terminal
 func (t Tensor) Show() {
 	if len(t.shape) == 1 {
 		fmt.Printf("%v", t.data)
@@ -286,12 +341,14 @@ func (t Tensor) Show() {
 	}
 }
 
+// Copies one tensor to a new variable that it is assigned to
 func (t *Tensor) Copy() *Tensor {
 	newt, _ := NewTensor(t.shape...)
 	copy(newt.data, t.data)
 	return newt
 }
 
+// Matrix multiplication on two teensors look inside for all the kinds or muls
 func Matmul(a *Tensor, b *Tensor) (*Tensor, error) {
 	// if both are 1D tensors then do a elmentwise multiplication and return a single element tensor (m) * (m) => (1)
 	if len(a.shape) == 1 && len(b.shape) == 1 {
@@ -317,7 +374,7 @@ func Matmul(a *Tensor, b *Tensor) (*Tensor, error) {
 				val := 0.0
 				for k := 0; k < a.shape[1]; k++ {
 					val1, _ := a.Get(i, k)
-					val2, _ := a.Get(k, j)
+					val2, _ := b.Get(k, j)
 					val += val1 * val2
 				}
 				result.Set(val, i, j)
@@ -387,9 +444,10 @@ func Matmul(a *Tensor, b *Tensor) (*Tensor, error) {
 		}
 		return result, nil
 	}
-	return nil, fmt.Errorf("something wrong last nil, nil")
+	return nil, fmt.Errorf("something wrong last %v, %v", a.shape, b.shape)
 }
 
+// Transpose a tensor [n, m] -> [m, n] 
 func (t *Tensor) Transpose() (*Tensor, error) {
 	if len(t.shape) != 2 {
 		return nil, fmt.Errorf("transpose: Input should be a 2d tensor")

@@ -67,7 +67,7 @@ func (l *LinearRegression) Train(X *Tensor, Y *Tensor, lr float64, epochs int) e
 			if err != nil {
 				return err
 			}
-			// calculate loss 
+			// calculate loss
 			loss, err := MSE(y, y_pred)
 			if err != nil {
 				return err
@@ -77,7 +77,11 @@ func (l *LinearRegression) Train(X *Tensor, Y *Tensor, lr float64, epochs int) e
 			if err != nil {
 				return err
 			}
-			delW, err := TensorMul(delLoss, x)
+			delLoss, err = delLoss.Reshape(1, 1)
+			if err != nil {
+				return err
+			}
+			delW, err := Matmul(x, delLoss)
 			if err != nil {
 				return err
 			}
@@ -96,21 +100,20 @@ func (l *LinearRegression) Train(X *Tensor, Y *Tensor, lr float64, epochs int) e
 	return nil
 }
 
-
-// Logistic Regression 
+// Logistic Regression
 type LogisticRegression struct {
 	Weights *Tensor
-	Bias float64
+	Bias    float64
 }
 
 func NewLogisticRegression(numFeatures int) *LogisticRegression {
 	weights, _ := NewTensor(numFeatures)
-	for i := range(weights.data) {
+	for i := range weights.data {
 		weights.data[i] = rand.NormFloat64() * 0.01
 	}
 	return &LogisticRegression{
-		Weights: weights, 
-		Bias: rand.NormFloat64() * 0.01,
+		Weights: weights,
+		Bias:    rand.NormFloat64() * 0.01,
 	}
 }
 
@@ -128,5 +131,90 @@ func (lr *LogisticRegression) Predict(X *Tensor) (*Tensor, error) {
 	return b, nil
 }
 
+func (l *LogisticRegression) Train(X *Tensor, Y *Tensor, lr float64, epochs int) error {
+	if len(X.shape) != 2 {
+		return fmt.Errorf("train: the length of input X tensor shape is not 2 %v", X.shape)
+	}
+	if len(Y.shape) != 2 {
+		return fmt.Errorf("train: The length of input Y tensor shape is not 2 %v", Y.shape)
+	}
+	if Y.shape[1] != 1 {
+		return fmt.Errorf("train: The Y tensor should have a shape (m, 1) it has %v", Y.shape[1])
+	}
+	if X.shape[0] != Y.shape[0] {
+		return fmt.Errorf("train: Both X and Y tensor should be (m, p) and (m, 1) they are %v , %v", X.shape, Y.shape)
+	}
+	for i := range Y.data {
+		if Y.data[i] != 1.0 && Y.data[i] != 0.0 {
+			return fmt.Errorf("train: The Y tensor has a non 0 or 1 val at %v. only 1 or 0 should be there in logistic regression it is %v", i, Y.data[i])
+		}
+	}
 
+	for epoch := 0; epoch < epochs; epoch++ {
+		sumloss := 0.0
+		for j := range X.shape[0] {
+			x, err := X.Slice(j)
+			if err != nil {
+				return err
+			}
+			y, err := Y.Slice(j)
+			if err != nil {
+				return err
+			}
+			y_pred, err := l.Predict(x)
+			if err != nil {
+				return err
+			}
+			loss, err := BCE(y, y_pred)
+			if err != nil {
+				return err
+			}
+			sumloss += loss
+			difflbysigma, err := DiffBCE(y, y_pred)
+			if err != nil {
+				return err
+			}
+			// Calculate derivative of sigmoid: y_pred * (1 - y_pred)
+			// We cannot use Apply("DiffSigmoid") on difflbysigma because that would
+			// calculate the derivative of the *gradient values*, not the predictions.
+			ones, _ := NewTensorOnes(y_pred.shape...)
+			oneMinusYPred, _ := TensorDiff(ones, y_pred)
+			sigmoidDeriv, _ := TensorMul(y_pred, oneMinusYPred)
 
+			diffsigma, err := TensorMul(difflbysigma, sigmoidDeriv)
+			if err != nil {
+				return err
+			}
+			diffsigma, err = diffsigma.Reshape(1, 1)
+			if err != nil {
+				return err
+			}
+			x_new, err := x.Reshape(1, 2)
+			if err != nil {
+				return err
+			}
+			delW, err := Matmul(diffsigma, x_new)
+			if err != nil {
+				return err
+			}
+			delW, _ = delW.MulScalar(lr)
+			delW, err = delW.Reshape(l.Weights.shape...)
+			if err != nil {
+				return err
+			}
+			l.Weights, err = TensorDiff(l.Weights, delW)
+			if err != nil {
+				return err
+			}
+			delB, err := diffsigma.MulScalar(lr)
+			if err != nil {
+				return err
+			}
+			db, _ := delB.Get(0)
+			l.Bias = l.Bias - db
+		}
+		fmt.Printf("Loss: %v | epoch: %v\n", sumloss/float64(len(X.data)), epoch)
+	}
+	return nil
+
+}

@@ -7,8 +7,8 @@ import (
 	"strconv"
 )
 
-// Implement the apply function for tensors to apply func to it 
-type ElemFunc func(float64) (float64)
+// Implement the apply function for tensors to apply func to it
+type ElemFunc func(float64) float64
 
 var funcRegistry = make(map[string]ElemFunc)
 
@@ -25,6 +25,7 @@ func init() {
 	RegisterFunc("Sigmoid", Sigmoid)
 	RegisterFunc("ReLu", ReLu)
 	RegisterFunc("DiffSigmoid", DiffSigmoid)
+	RegisterFunc("Round", Round)
 }
 
 // Apply func that applies a float to float function on a tensor
@@ -75,27 +76,33 @@ func DiffMSE(a *Tensor, b *Tensor) (*Tensor, error) {
 		diff := a.data[i] - b.data[i]
 		result.data[i] = diff
 	}
-	result, err = result.MulScalar(2.0/float64(len(a.data)))
+	result, err = result.MulScalar(2.0 / float64(len(a.data)))
 	if err != nil {
 		return nil, err
 	}
-	return result, nil 
+	return result, nil
 }
 
-// The binary cross entropy function 
+// The binary cross entropy function
 func BCE(a *Tensor, b *Tensor) (float64, error) {
 	if !ShapesMatch(a.shape, b.shape) {
 		return 0, fmt.Errorf("bce: The shape of the input tensors do not match")
 	}
 
-	result := 0.0 
-	for i := range(a.data) {
+	result := 0.0
+	for i := range a.data {
 		if a.data[i] > 1 || b.data[i] > 1 {
 			return 0, fmt.Errorf("bce: The value in either tensor is more than 1")
 		}
-		result += a.data[i] * Ln(b.data[i]) + (1 - a.data[i]) * Ln(1 - b.data[i])
+		val := b.data[i]
+		if val < 1e-9 {
+			val = 1e-9
+		} else if val > 1-1e-9 {
+			val = 1 - 1e-9
+		}
+		result += a.data[i]*Ln(val) + (1-a.data[i])*Ln(1-val)
 	}
-	result = -1.0 * result/float64(len(a.data))
+	result = -1.0 * result / float64(len(a.data))
 	return result, nil
 }
 
@@ -104,44 +111,52 @@ func DiffBCE(a *Tensor, b *Tensor) (*Tensor, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range(a.data) {
+	for i := range a.data {
 		if a.data[i] > 1 || b.data[i] > 1 {
 			return nil, fmt.Errorf("diffBCE: The value in either tensor is more than one")
 		}
 		y := a.data[i]
 		y_pred := b.data[i]
-		result.data[i] = (y_pred - y)/(y_pred * (1 - y_pred))
+		if y_pred < 1e-9 {
+			y_pred = 1e-9
+		} else if y_pred > 1-1e-9 {
+			y_pred = 1 - 1e-9
+		}
+		result.data[i] = (y_pred - y) / (y_pred * (1 - y_pred))
 	}
-	return nil, nil 
+	return result, nil
 }
 
-// Sigmoid funtion 
+// Sigmoid funtion
 func Sigmoid(a float64) float64 {
-	e := Exp(a)
-	result := 1.0/(1.0 + e)
+	e := Exp(-a)
+	result := 1.0 / (1.0 + e)
 	return result
 }
 
-func DiffSigmoid(a float64) (float64) {
+func DiffSigmoid(a float64) float64 {
 	sigx := Sigmoid(a)
 	return sigx * (1.0 - sigx)
 }
 
 // relu function
-func ReLu(a float64) (float64) {
-	if a < 0 {return 0}
+func ReLu(a float64) float64 {
+	if a < 0 {
+		return 0
+	}
 	return a
 }
 
-func DiffReLu(a float64) (float64) {
-	if a < 0 {return 0}
-	return 1.0 
+func DiffReLu(a float64) float64 {
+	if a < 0 {
+		return 0
+	}
+	return 1.0
 }
-
 
 // Function to read the csv file returns like pandas df
 func ReadCsv(path string) (map[string][]float64, error) {
-	file, err := os.Open(path) 
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("readCsv: error opening the file path: %w", err)
 	}
@@ -167,7 +182,7 @@ func ReadCsv(path string) (map[string][]float64, error) {
 			}
 			return nil, fmt.Errorf("readCsv: Error reading row: %w", err)
 		}
-		for i, value := range(row) {
+		for i, value := range row {
 			if i < len(headers) {
 				floatVal, err := strconv.ParseFloat(value, 64)
 				if err != nil {

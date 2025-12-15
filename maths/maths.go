@@ -1,4 +1,4 @@
-package main
+package maths
 
 import (
 	"fmt"
@@ -6,14 +6,11 @@ import (
 	"strings"
 )
 
-func Power(base float64, pow float64) (float64, error) {
-	numerator, denominator, err := Fraction(pow)
-	if err != nil {
-		return 0, err
-	}
+func Power(base float64, pow float64) (float64) {
+	numerator, denominator := Fraction(pow)
 	root := nthRoot(base, denominator)
 	result := powerInt(root, numerator)
-	return result, nil
+	return result
 }
 
 func Round(a float64) float64 {
@@ -61,9 +58,9 @@ func nthRoot(x float64, n int64) float64 {
 	return guess
 }
 
-func Fraction(f float64) (num, den int64, err error) {
+func Fraction(f float64) (num, den int64) {
 	if f == 0 {
-		return 0, 1, nil
+		return 0, 1
 	}
 	var sign int64 = 1
 	if f < 0 {
@@ -74,15 +71,12 @@ func Fraction(f float64) (num, den int64, err error) {
 	intPart := int64(f)
 	fracPart := f - float64(intPart)
 
-	num, den, err = convertFrac(fracPart)
-	if err != nil {
-		return 0, 0, err
-	}
+	num, den = convertFrac(fracPart)
 	num += intPart * den
-	return num * sign, den, nil
+	return num * sign, den
 }
 
-func convertFrac(f float64) (num, den int64, err error) {
+func convertFrac(f float64) (num, den int64) {
 	s := fmt.Sprintf("%.5f", f)
 	s = strings.TrimPrefix(s, "0.")
 
@@ -90,14 +84,15 @@ func convertFrac(f float64) (num, den int64, err error) {
 	for range s {
 		denominator *= 10
 		if denominator < 0 {
-			return 0, 0, fmt.Errorf("convertFrac: denominator overflow for %f", f)
+			denominator = int64(math.Inf(1))
+			break
 		}
 	}
 	var numerator int64
 	fmt.Sscanf(s, "%d", &numerator)
 
 	common := Gcd(numerator, denominator)
-	return numerator / common, denominator / common, nil
+	return numerator / common, denominator / common
 }
 
 func Gcd(a, b int64) int64 {
@@ -153,7 +148,7 @@ func Sin(x float64) float64 {
 	result := 0.0
 	flag := 1.0
 	for n := 1; ; n += 2 {
-		pow, _ := Power(x, float64(n))
+		pow := Power(x, float64(n))
 		newResult := result + flag*(pow/Factorial(n))
 		if Abs(result-newResult) <= epsilon {
 			return newResult
@@ -170,8 +165,8 @@ func Cos(x float64) float64 {
 	epsilon := 1e-15
 	result := 0.0
 	for n := 0; ; n++ {
-		pow, _ := Power(x, float64(2*n))
-		flag, _ := Power(-1, float64(n))
+		pow := Power(x, float64(2*n))
+		flag := Power(-1, float64(n))
 		newResult := result + flag*(pow/Factorial(2*n))
 		if Abs(result-newResult) <= epsilon {
 			return newResult

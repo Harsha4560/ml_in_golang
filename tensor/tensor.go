@@ -241,6 +241,20 @@ func ShapesMatch(a, b *Tensor) bool {
 	return true
 }
 
+//Give a tensor with all the indices given into a single tensor from the input tensor 
+func (t *Tensor) GetBatchElements(indices []int) (*Tensor, error) {
+	newShape := append([]int{len(indices)}, t.shape[1:]...)
+	result, _ := NewTensor(newShape...)
+	for i := range indices {
+		temp, err := t.Slice(indices[i])
+		if err != nil {
+			return nil, err
+		}
+		result.SetTensor(temp, i)
+	}
+	return result, nil
+}
+
 // Shows a given tensor in the terminal
 func (t Tensor) Show() {
 	if len(t.shape) == 1 {

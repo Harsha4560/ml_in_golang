@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"encoding/csv"
 	"os"
+	"nnscratch/utils"
+
 
 )
 
@@ -84,28 +86,31 @@ func main() {
 	model.LossLayer = &layers.BCELossLayer{}
 
 	epochs := 10000
+	batchSize := 2
+	loader := utils.NewDataLoader(x, y, batchSize, true)
 
 	for i := 0; i < epochs; i++ {
-		prediction, err := model.Forward(x)
-		if err != nil {
-			panic(err)
-		}
-		loss, err := model.LossLayer.Loss(y, prediction)
-		if err != nil {
-			panic(err)
-		}
-		if i%100 == 0 {
-			fmt.Println("Epoch: ", i, "Loss: ", loss)
-			println("-----")
-		}
-
-		diff, err := model.LossLayer.Diffrential()
-		if err != nil {
-			panic(err)
-		}
-		err = model.Backward(diff, 0.1)
-		if err != nil {
-			panic(err)
+		iterator := loader.MakeIterator()
+		for iterator.Next() {
+			xBatch, yBatch := iterator.Get()
+			prediction, err := model.Forward(xBatch)
+			if err != nil {
+				panic(err)
+			}
+			loss, err := model.LossLayer.Loss(yBatch, prediction)
+			if err != nil {
+				panic(err)
+			}	
+			if i%100 == 0 {
+				fmt.Println("Epoch: ", i, "Loss: ", loss)
+				println("-----")
+			}
+			diff, _ := model.LossLayer.Diffrential()
+			err = model.Backward(diff, 0.1)
+			if err != nil {
+				panic(err)
+			}
+			
 		}
 	}
 	fmt.Println("training done!")

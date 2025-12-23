@@ -47,11 +47,28 @@ func (t *Tensor) MulScalar(other float64) (*Tensor, error) {
 }
 
 // Perform element wise addition for tensors of same shape
+// This also included broadcasting now
 func TensorAdd(a *Tensor, b *Tensor) (*Tensor, error) {
-	if !ShapesMatch(a, b) {
-		return nil, fmt.Errorf("add: tensor shapes do not match %v and %v", a.shape, b.shape)
+	if len(a.shape) != len((b.shape)) {
+		return nil, fmt.Errorf("add: tensor shapes or brodcast do not match %v and %v", a.shape, b.shape)
+	}
+	if !ShapesMatch(a, b) && b.shape[0] != 1{
+		return nil, fmt.Errorf("add: tensor shapes or brodcast do not match %v and %v", a.shape, b.shape)
+	}
+	if len(a.shape) > 1 {
+		if b.shape[0] == 1 && !listMatch(a.shape[1:], b.shape[1:]){
+			return nil, fmt.Errorf("add: tensor shapes or brodcast do not match %v and %v", a.shape, b.shape)
+		}
 	}
 	result, _ := NewTensor(a.shape...)
+	if b.shape[0] == 1 && b.shape[0] != a.shape[0] {
+		for i := range a.shape[0] {
+			for j := 0; j < b.size; j++ {
+				result.data[i*a.strides[0] + j] = a.data[i*a.strides[0] + j] + b.data[j]
+			}
+		}
+		return result, nil 
+	}
 	for i := 0; i < a.size; i++ {
 		result.data[i] = a.data[i] + b.data[i]
 	}
@@ -80,6 +97,14 @@ func  TensorMul(a *Tensor, b *Tensor) (*Tensor, error) {
 		result.data[i] = a.data[i] * b.data[i]
 	}
 	return result, nil
+}
+
+func TensorDiv(a *Tensor, b *Tensor) (*Tensor, error) {
+	denom,err := b.Power(-1)
+	if err != nil {
+		return nil, err
+	}
+	return TensorMul(a, denom)
 }
 
 func listMatch(a, b []int) bool {

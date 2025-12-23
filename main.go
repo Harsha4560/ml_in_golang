@@ -1,15 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"nnscratch/tensor"
-	"nnscratch/layers"
-	"strconv"
 	"encoding/csv"
-	"os"
+	"fmt"
+	"nnscratch/layers"
+	"nnscratch/tensor"
+	"nnscratch/optim"
 	"nnscratch/utils"
-
-
+	"os"
+	"strconv"
 )
 
 // Function to read the csv file returns like pandas df
@@ -71,7 +70,7 @@ func main() {
 	// x.Show()
 	y1, ok := df["coly"] // Check existence if needed, or just y1 := df["coly"]
 	if !ok {
-		// handle error
+		panic(ok)
 	}
 	y, _ := tensor.NewTensorInput(y1)
 	y, _ = y.Unsqeeze(1)
@@ -89,9 +88,12 @@ func main() {
 	batchSize := 2
 	loader := utils.NewDataLoader(x, y, batchSize, true)
 
+	optimizer := optim.NewAdam(model.GetParameters(), 0.1)
+
 	for i := 0; i < epochs; i++ {
 		iterator := loader.MakeIterator()
 		for iterator.Next() {
+			optimizer.ZeroGrad()
 			xBatch, yBatch := iterator.Get()
 			prediction, err := model.Forward(xBatch)
 			if err != nil {
@@ -100,17 +102,17 @@ func main() {
 			loss, err := model.LossLayer.Loss(yBatch, prediction)
 			if err != nil {
 				panic(err)
-			}	
+			}
 			if i%100 == 0 {
 				fmt.Println("Epoch: ", i, "Loss: ", loss)
 				println("-----")
 			}
 			diff, _ := model.LossLayer.Diffrential()
-			err = model.Backward(diff, 0.1)
+			err = model.Backward(diff, 0)
 			if err != nil {
 				panic(err)
 			}
-			
+			optimizer.Step()
 		}
 	}
 	fmt.Println("training done!")

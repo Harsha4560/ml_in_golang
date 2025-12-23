@@ -7,15 +7,23 @@ import (
 	"nnscratch/tensor"
 )
 
+type Parameter struct {
+	Value *tensor.Tensor
+	Grad *tensor.Tensor
+}
+
 type Layer interface {
 	Forward(input *tensor.Tensor) (*tensor.Tensor, error)
 	Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.Tensor, error)
+	GetParameters() []*Parameter
 }
 
 type LossLayer interface {
 	Loss(y_pred *tensor.Tensor, y_actual *tensor.Tensor) (float64, error)
 	Diffrential() (*tensor.Tensor, error)
 }
+
+
 
 type Sequential struct {
 	Layers    []Layer
@@ -51,6 +59,14 @@ func (s *Sequential) Backward(grad *tensor.Tensor, lr float64) error {
 	return nil
 }
 
+func (s *Sequential) GetParameters() []*Parameter {
+	var params []*Parameter 
+	for _, layer := range(s.Layers) {
+		params = append(params, layer.GetParameters()...)
+	}
+	return params
+}
+
 // Loss functions
 
 // Mean square error loss
@@ -77,16 +93,16 @@ func (l *MSELossLayer) Diffrential() (*tensor.Tensor, error) {
 	return res, nil
 }
 
-// BCE loss layer should always have a sigmoid function before it to make sure the input is less than 1 
+// BCE loss layer should always have a sigmoid function before it to make sure the input is less than 1
 type BCELossLayer struct {
-	y_pred *tensor.Tensor
+	y_pred   *tensor.Tensor
 	y_actual *tensor.Tensor
 }
 
 func (l *BCELossLayer) Loss(y_pred *tensor.Tensor, y_actual *tensor.Tensor) (float64, error) {
-	l.y_actual = y_actual 
-	l.y_pred = y_pred 
-	res, err := loss.BCE(y_pred, y_actual) 
+	l.y_actual = y_actual
+	l.y_pred = y_pred
+	res, err := loss.BCE(y_pred, y_actual)
 	if err != nil {
 		return 0, err
 	}
@@ -127,14 +143,13 @@ func (s *SigmoidLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.
 	return tensor.TensorMul(gradOutput, diffren)
 }
 
-type DenseLayer struct {
-	Weights *tensor.Tensor
-	Bias    *tensor.Tensor
-	input   *tensor.Tensor
+func (s *SigmoidLayer) GetParameters() []*Parameter {
+	return []*Parameter{}
 }
 
 
-// Sine and cosine layers 
+
+// Sine and cosine layers
 type SineLayer struct {
 	input *tensor.Tensor
 }
@@ -152,6 +167,10 @@ func (s *SineLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.Ten
 	return tensor.TensorMul(gradOutput, diffren)
 }
 
+func (s *SineLayer) GetParameters() []*Parameter {
+	return []*Parameter{}
+}
+
 type CosineLayer struct {
 	input *tensor.Tensor
 }
@@ -167,25 +186,41 @@ func (s *CosineLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.T
 		return nil, err
 	}
 	diffren, _ = diffren.MulScalar(-1.0)
-	return tensor.TensorMul(gradOutput, diffren) 
+	return tensor.TensorMul(gradOutput, diffren)
 }
 
+func (s *CosineLayer) GetParameters() []*Parameter {
+	return []*Parameter{}
+}
+
+type DenseLayer struct {
+	Weights *Parameter
+	Bias    *Parameter
+	input   *tensor.Tensor
+}
 
 func NewDenseLayer(in_features int, out_features int) *DenseLayer {
 	w, _ := tensor.NewTensorRandom(out_features, in_features)
-	b, _ := tensor.NewTensorRandom(out_features)
+	b, _ := tensor.NewTensorRandom(1, out_features)
+
+	w_grad, _ := tensor.NewTensor(out_features, in_features)
+	b_grad, _ := tensor.NewTensor(1, out_features)
 
 	return &DenseLayer{
-		Weights: w,
-		Bias:    b,
+		Weights: &Parameter{Value: w, Grad: w_grad},
+		Bias:    &Parameter{Value: b, Grad: b_grad},
 	}
 
 }
 
 func (d *DenseLayer) Forward(input *tensor.Tensor) (*tensor.Tensor, error) {
 	d.input = input
-	w_t, _ := d.Weights.Transpose()
+	w_t, _ := d.Weights.Value.Transpose()
 	res, err := tensor.Matmul(input, w_t)
+	if err != nil {
+		return nil, err
+	}
+	res, err = tensor.TensorAdd(res, d.Bias.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -198,16 +233,9 @@ func (d *DenseLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.Te
 	if err != nil {
 		return nil, err
 	}
-	stepW, _ := dW.MulScalar(lr)
+	d.Weights.Grad = dW
 
-	// calculate gradient to return dl/dx
-	gradInput, _ := tensor.Matmul(gradOutput, d.Weights)
-
-	//Update the weights
-	d.Weights, err = tensor.TensorDiff(d.Weights, stepW)
-	if err != nil {
-		return nil, err
-	}
+	gradInput, _ := tensor.Matmul(gradOutput, d.Weights.Value)
 
 	batchSize := gradOutput.Shape()[0]
 	onesVector, err := tensor.NewTensorOnes(1, batchSize)
@@ -220,17 +248,14 @@ func (d *DenseLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.Te
 	}
 
 	// Reshape to bias shape
-	db_adjusted, err := db_raw.Reshape(d.Bias.Shape()...)
+	db_adjusted, err := db_raw.Reshape(d.Bias.Value.Shape()...)
 	if err != nil {
 		return nil, err
 	}
-
-	stepB, _ := db_adjusted.MulScalar(lr)
-	d.Bias, err = tensor.TensorDiff(d.Bias, stepB)
-	if err != nil {
-		return nil, err
-	}
-
+	d.Bias.Grad = db_adjusted
 	return gradInput, nil
 }
 
+func (d *DenseLayer) GetParameters() []*Parameter {
+	return []*Parameter{d.Weights, d.Bias}
+}

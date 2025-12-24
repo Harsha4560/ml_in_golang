@@ -4,8 +4,9 @@ import (
 	"encoding/csv"
 	"fmt"
 	"nnscratch/layers"
-	"nnscratch/tensor"
+	"nnscratch/maths"
 	"nnscratch/optim"
+	"nnscratch/tensor"
 	"nnscratch/utils"
 	"os"
 	"strconv"
@@ -82,6 +83,7 @@ func main() {
 		layers.NewDenseLayer(4, 1),
 		&layers.SigmoidLayer{},
 	)
+
 	model.LossLayer = &layers.BCELossLayer{}
 
 	epochs := 10000
@@ -91,6 +93,7 @@ func main() {
 	optimizer := optim.NewAdam(model.GetParameters(), 0.1)
 
 	for i := 0; i < epochs; i++ {
+		sumloss := 0.0
 		iterator := loader.MakeIterator()
 		for iterator.Next() {
 			optimizer.ZeroGrad()
@@ -100,13 +103,11 @@ func main() {
 				panic(err)
 			}
 			loss, err := model.LossLayer.Loss(yBatch, prediction)
+			sumloss += loss
 			if err != nil {
 				panic(err)
 			}
-			if i%100 == 0 {
-				fmt.Println("Epoch: ", i, "Loss: ", loss)
-				println("-----")
-			}
+
 			diff, _ := model.LossLayer.Diffrential()
 			err = model.Backward(diff, 0)
 			if err != nil {
@@ -114,9 +115,16 @@ func main() {
 			}
 			optimizer.Step()
 		}
+		sumloss = sumloss/float64(batchSize)
+		if i%100 == 0 {
+			fmt.Println("Epoch: ", i, "Loss: ", sumloss)
+			println("-----")
+		}
+
 	}
 	fmt.Println("training done!")
 	ans, _ := model.Forward(x)
+	ans, _ = ans.Apply(maths.Round)
 	// ans, _ = ans.Apply("Round")
 	ans.Show()
 }

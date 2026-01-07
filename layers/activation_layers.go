@@ -31,7 +31,7 @@ func (s *SigmoidLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.
 }
 
 func (s *SigmoidLayer) GetParameters() []*Parameter {
-	return []*Parameter{}
+	return nil
 }
 
 func (s *SigmoidLayer) GetWeights() []*tensor.Tensor {
@@ -40,6 +40,17 @@ func (s *SigmoidLayer) GetWeights() []*tensor.Tensor {
 
 func (s *SigmoidLayer) GetBiases() []*tensor.Tensor {
 	return nil
+}
+
+func (s *SigmoidLayer) GetModelDetails() []*ModelDetails {
+	details := &ModelDetails{
+		Name: "Sigmoid",
+		InputParameters: 0,
+		OutputParameters: 0,
+		NumWeights: 0,
+		NumBiases: 0,
+	}
+	return []*ModelDetails{details}
 }
 
 
@@ -63,7 +74,7 @@ func (s *SineLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.Ten
 }
 
 func (s *SineLayer) GetParameters() []*Parameter {
-	return []*Parameter{}
+	return nil 
 }
 
 func (s *SineLayer) GetWeights() []*tensor.Tensor {
@@ -93,7 +104,7 @@ func (s *CosineLayer) Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.T
 }
 
 func (s *CosineLayer) GetParameters() []*Parameter {
-	return []*Parameter{}
+	return nil
 }
 
 func (s *CosineLayer) GetWeights() []*tensor.Tensor {

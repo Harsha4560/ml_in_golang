@@ -78,3 +78,14 @@ func (d *DenseLayer) GetWeights() []*tensor.Tensor {
 func (d *DenseLayer) GetBiases() []*tensor.Tensor {
 	return []*tensor.Tensor{d.Bias.Value}
 }
+
+func (d *DenseLayer) GetModelDetails() []*ModelDetails {
+	details := &ModelDetails{
+		Name: "Dense Layer",
+		InputParameters: d.Weights.Value.Shape()[1],
+		OutputParameters: d.Weights.Value.Shape()[0],
+		NumWeights: len(d.Weights.Value.Data()),
+		NumBiases: len(d.Bias.Value.Data()),
+	}
+	return []*ModelDetails{details}
+}

@@ -1,61 +1,20 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
 	"nnscratch/layers"
+	"nnscratch/utils"
+
 	"nnscratch/maths"
 	"nnscratch/optim"
 	"nnscratch/tensor"
-	"nnscratch/utils"
-	"os"
-	"strconv"
+	// "nnscratch/utils"
 )
 
-// Function to read the csv file returns like pandas df
-func ReadCsv(path string) (map[string][]float64, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("readCsv: error opening the file path: %w", err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-
-	headers, err := reader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("readCsv: Error reading the headers: %w", err)
-	}
-
-	columnMap := make(map[string][]float64)
-
-	for _, header := range headers {
-		columnMap[header] = []float64{}
-	}
-	for {
-		row, err := reader.Read()
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			return nil, fmt.Errorf("readCsv: Error reading row: %w", err)
-		}
-		for i, value := range row {
-			if i < len(headers) {
-				floatVal, err := strconv.ParseFloat(value, 64)
-				if err != nil {
-					return nil, fmt.Errorf("readCsv: error converting to float: %w", err)
-				}
-				columnMap[headers[i]] = append(columnMap[headers[i]], floatVal)
-			}
-		}
-	}
-	return columnMap, nil
-}
 
 
 func main() {
-	df, err := ReadCsv("test.csv")
+	df, err := utils.ReadCsv("test.csv")
 	if err != nil {
 		fmt.Print(err)
 	}
@@ -85,6 +44,8 @@ func main() {
 	)
 
 	model.LossLayer = &layers.BCELossLayer{}
+	model.RandomInitialization()
+
 
 	epochs := 10000
 	batchSize := 2

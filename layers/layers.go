@@ -9,12 +9,21 @@ type Parameter struct {
 	Grad *tensor.Tensor
 }
 
+type ModelDetails struct {
+	Name string 
+	InputParameters int 
+	OutputParameters int
+	NumWeights int 
+	NumBiases int 
+}
+
 type Layer interface {
 	Forward(input *tensor.Tensor) (*tensor.Tensor, error)
 	Backward(gradOutput *tensor.Tensor, lr float64) (*tensor.Tensor, error)
 	GetParameters() []*Parameter
 	GetWeights() []*tensor.Tensor
 	GetBiases() []*tensor.Tensor
+	GetModelDetails() []*ModelDetails
 }
 
 type Sequential struct {
@@ -73,4 +82,12 @@ func (s *Sequential) GetBiases() []*tensor.Tensor {
 		biases = append(biases, layer.GetBiases()...)
 	}
 	return biases
+}
+
+func (s *Sequential) GetModelDetails() []*ModelDetails {
+	var details []*ModelDetails	
+	for _, layer := range s.Layers {
+		details = append(details, layer.GetModelDetails()...)
+	}
+	return details
 }
